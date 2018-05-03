@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Wwwision\GraphQL;
 
 use GraphQL\Type\Definition\ObjectType;
@@ -23,23 +25,32 @@ class TypeResolver
     private $types;
 
     /**
-     * @param string $typeClassName
+     * @param string|array $typeClassConfiguration
+     * @param array $additionalArguments
      * @return ObjectType
      */
-    public function get($typeClassName)
+    public function get($typeClassConfiguration, ...$additionalArguments)
     {
-        if (!is_string($typeClassName)) {
-            throw new \InvalidArgumentException(sprintf('Expected string, got "%s"', is_object($typeClassName) ? get_class($typeClassName) : gettype($typeClassName)), 1460065671);
+        $originalTypeClassConfiguration = $typeClassConfiguration;
+        if (is_array($typeClassConfiguration)) {
+            $hash = md5(json_encode($typeClassConfiguration));
+            $typeClassName = reset($typeClassConfiguration);
+        } elseif (is_string($typeClassConfiguration)) {
+            $hash = md5($typeClassConfiguration);
+            $typeClassName = $typeClassConfiguration;
+        } else {
+            throw new \InvalidArgumentException('The Type classname can be of type string or an array of string');
         }
-        if (!is_subclass_of($typeClassName, Type::class)) {
-            throw new \InvalidArgumentException(sprintf('The TypeResolver can only resolve types extending "GraphQL\Type\Definition\Type", got "%s"', $typeClassName), 1461436398);
-        }
-        if (!isset($this->types[$typeClassName])) {
-            // forward recursive requests of the same type to a closure to prevent endless loops
-            $this->types[$typeClassName] = function() use ($typeClassName) { return $this->get($typeClassName); };
 
-            $this->types[$typeClassName] = new $typeClassName($this);
+        if (!is_subclass_of($typeClassName, Type::class)) {
+            throw new \InvalidArgumentException(sprintf('The TypeResolver can only resolve types extending "GraphQL\Type\Definition\Type", got "%s"', $typeClassConfiguration), 1461436398);
         }
-        return $this->types[$typeClassName];
+        if (!isset($this->types[$hash])) {
+            // forward recursive requests of the same type to a closure to prevent endless loops
+            $this->types[$hash] = function() use ($originalTypeClassConfiguration, $additionalArguments) { return $this->get($originalTypeClassConfiguration, ...$additionalArguments); };
+
+            $this->types[$hash] = new $typeClassName($this, ...$additionalArguments);
+        }
+        return $this->types[$hash];
     }
 }
