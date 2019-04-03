@@ -56,12 +56,17 @@ class SchemaService
         if (isset($endpointConfiguration['querySchema'])) {
             $schemaConfig = SchemaConfig::create()
                 ->setQuery($this->typeResolver->get($endpointConfiguration['querySchema']));
+
+            $schemaConfig->query = $schemaConfig->query->getWrappedType();
+
             if (isset($endpointConfiguration['mutationSchema'])) {
                 $schemaConfig->setMutation($this->typeResolver->get($endpointConfiguration['mutationSchema']));
             }
+
             if (isset($endpointConfiguration['subscriptionSchema'])) {
                 $schemaConfig->setSubscription($this->typeResolver->get($endpointConfiguration['subscriptionSchema']));
             }
+
             return new Schema($schemaConfig);
         }
 

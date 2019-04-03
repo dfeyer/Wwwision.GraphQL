@@ -1,8 +1,11 @@
 <?php
+
 namespace Wwwision\GraphQL;
 
+use Closure;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
+use GraphQL\Utils\TypeInfo;
 use Neos\Flow\Annotations as Flow;
 
 /**
@@ -18,28 +21,12 @@ use Neos\Flow\Annotations as Flow;
 class TypeResolver
 {
     /**
-     * @var ObjectType[]
-     */
-    private $types;
-
-    /**
      * @param string $typeClassName
+     * @param Closure $wrappers
      * @return ObjectType
      */
-    public function get($typeClassName)
+    public function get($typeClassName, Closure $wrappers = null)
     {
-        if (!is_string($typeClassName)) {
-            throw new \InvalidArgumentException(sprintf('Expected string, got "%s"', is_object($typeClassName) ? get_class($typeClassName) : gettype($typeClassName)), 1460065671);
-        }
-        if (!is_subclass_of($typeClassName, Type::class)) {
-            throw new \InvalidArgumentException(sprintf('The TypeResolver can only resolve types extending "GraphQL\Type\Definition\Type", got "%s"', $typeClassName), 1461436398);
-        }
-        if (!isset($this->types[$typeClassName])) {
-            // forward recursive requests of the same type to a closure to prevent endless loops
-            $this->types[$typeClassName] = function() use ($typeClassName) { return $this->get($typeClassName); };
-
-            $this->types[$typeClassName] = new $typeClassName($this);
-        }
-        return $this->types[$typeClassName];
+        return WrappedType::create($typeClassName, $this, $wrappers);
     }
 }
